@@ -295,7 +295,8 @@ docs: 문서 수정
 style: 스타일 수정
 refactor: 리팩토링
 test: 테스트 코드 추가 또는 수정
-```
+
+
 작성 규칙
 커밋 타입은 영어 소문자로 작성합니다.
 콜론 뒤에는 한 칸을 띄웁니다.
@@ -305,7 +306,7 @@ test: 테스트 코드 추가 또는 수정
 
 예시:
 
-```bash
+bash
 git commit -m "chore: 마켓플래그 프로젝트 초기화" 
 git commit -m "docs: README 프로젝트 개요 작성" 
 git commit -m "feat: 시장진단 입력 페이지 추가"
