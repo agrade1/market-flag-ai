@@ -1,40 +1,54 @@
-// 플레이스홀더 — 후속 대시보드 작업에서 이 파일을 통째로 대체한다.
-import { Loader2, Info } from "lucide-react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
+import { getMockDiagnosis } from "@/lib/data-sources/mock-market-data";
+import DiagnosisSummaryCard from "./DiagnosisSummaryCard";
+import CompetitionGauge from "./CompetitionGauge";
+import MarketSizeChart from "./MarketSizeChart";
+import PersonaCard from "./PersonaCard";
+import AssumptionNotice from "./AssumptionNotice";
 
 interface DiagnosisResultProps {
   keyword: string;
 }
 
 export default function DiagnosisResult({ keyword }: DiagnosisResultProps) {
+  // 서버에서 deterministic Mock 데이터를 생성 (같은 키워드 → 같은 결과)
+  const result = getMockDiagnosis(keyword);
+
   return (
-    <Card className="mt-8">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Loader2
-            className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400"
-            aria-hidden="true"
-          />
-          ‘{keyword}’ 시장진단 리포트 준비 중
-        </CardTitle>
-        <CardDescription>
-          레드오션/블루오션 판별, 시장 규모(TAM/SAM/SOM), 타겟 페르소나 분석을
-          곧 이 자리에서 보여드릴 예정입니다.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="flex items-start gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          본 리포트의 수치는 공공데이터·검색 트렌드·AI 추론 기반의 참고용
-          추정치이며, 실제 의사결정 전 추가 검증이 필요합니다.
-        </p>
-      </CardContent>
-    </Card>
+    <div className="mt-8 flex flex-col gap-6">
+      {/* 1. 진단 요약 */}
+      <DiagnosisSummaryCard
+        keyword={result.keyword}
+        summary={result.summary}
+        confidence={result.confidence}
+        isEstimated={result.isEstimated}
+      />
+
+      {/* 2. 경쟁 강도 + 시장 규모 */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <CompetitionGauge competition={result.competition} />
+        <MarketSizeChart marketSize={result.marketSize} />
+      </div>
+
+      {/* 3. 타겟 페르소나 */}
+      <section>
+        <div className="flex items-baseline justify-between">
+          <h3 className="text-lg font-bold tracking-tight">타겟 페르소나</h3>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            비중은 타겟 고객 내 추정 분포입니다
+          </span>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {result.personas.map((persona) => (
+            <PersonaCard key={persona.id} persona={persona} />
+          ))}
+        </div>
+      </section>
+
+      {/* 4. 추정 안내 */}
+      <AssumptionNotice
+        notices={result.notices}
+        isEstimated={result.isEstimated}
+      />
+    </div>
   );
 }
