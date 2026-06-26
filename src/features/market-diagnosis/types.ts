@@ -1,65 +1,53 @@
-// 시장진단 공유 타입 — 검색 폼 / 결과 대시보드 / (후속) API가 공유하는 스키마.
+// 시장진단 공유 타입 — 검색 폼 / 결과 대시보드 / API가 공유하는 스키마.
+//
+// 타입의 단일 출처(source of truth)는 `src/lib/ai/report-schema.ts` 의 zod 스키마다.
+// 여기서는 z.infer 로 추론한 TS 타입을 re-export 만 한다(2026-06-26 확정,
+// [[api-contract-decisions]]). 필드를 바꾸려면 report-schema.ts 를 수정한다.
+//
 // 모든 수치는 공공데이터·검색 트렌드·AI 추론 기반의 참고용 추정치다.
 
-export type OceanType = "red" | "blue" | "mixed";
+import type { z } from "zod";
+import type {
+  competitionInfoSchema,
+  competitionSignalSchema,
+  confidenceLevelSchema,
+  diagnosisRequestSchema,
+  diagnosisResultSchema,
+  estimateMethodSchema,
+  estimateRangeSchema,
+  marketSizeSchema,
+  oceanTypeSchema,
+  personaSchema,
+  sourceRefSchema,
+} from "@/lib/ai/report-schema";
 
-export type ConfidenceLevel = "high" | "medium" | "low";
+export type OceanType = z.infer<typeof oceanTypeSchema>;
+
+export type ConfidenceLevel = z.infer<typeof confidenceLevelSchema>;
+
+/** 수치 산출 방법 태그. measured | trend-adjusted | inferred. */
+export type EstimateMethod = z.infer<typeof estimateMethodSchema>;
+
+/** 추정 범위(보수/기본/낙관). */
+export type EstimateRange = z.infer<typeof estimateRangeSchema>;
+
+/** 출처/근거 참조. */
+export type SourceRef = z.infer<typeof sourceRefSchema>;
+
+/** 레드/블루 판정에 기여한 개별 신호. */
+export type CompetitionSignal = z.infer<typeof competitionSignalSchema>;
 
 /** 시장 규모 추정치 (단위는 unit, 기본 "원"). */
-export interface MarketSize {
-  /** Total Addressable Market — 전체 시장 */
-  tam: number;
-  /** Serviceable Available Market — 접근 가능 시장 */
-  sam: number;
-  /** Serviceable Obtainable Market — 현실적 확보 가능 시장 */
-  som: number;
-  /** 표시 단위 (기본 "원") */
-  unit?: string;
-}
+export type MarketSize = z.infer<typeof marketSizeSchema>;
 
 /** 경쟁 강도 / 레드·블루오션 판별. */
-export interface CompetitionInfo {
-  ocean: OceanType;
-  /** 0–100, 높을수록 경쟁이 치열(레드오션)함. */
-  score: number;
-  summary: string;
-}
+export type CompetitionInfo = z.infer<typeof competitionInfoSchema>;
 
 /** 타겟 고객 페르소나. */
-export interface Persona {
-  id: string;
-  /** 페르소나 별칭 (예: "가치소비 직장인") */
-  name: string;
-  /** 연령대 (예: "30대 초반") */
-  ageRange: string;
-  /** 성별 표기 (예: "여성", "남녀 무관") */
-  gender: string;
-  /** 소비 성향·특징 */
-  traits: string[];
-  /** 핵심 문제 상황 */
-  painPoint: string;
-  /** 타겟 내 비중 (0–100, %) */
-  share: number;
-}
+export type Persona = z.infer<typeof personaSchema>;
 
 /** 시장진단 결과 전체. 대시보드가 이 형태를 렌더한다. */
-export interface DiagnosisResult {
-  keyword: string;
-  /** 생성 시각 (ISO 8601) */
-  generatedAt: string;
-  confidence: ConfidenceLevel;
-  /** 데이터 부족으로 AI 추정 비중이 큰 리포트인지 여부 */
-  isEstimated: boolean;
-  /** 진단 한줄 요약 */
-  summary: string;
-  competition: CompetitionInfo;
-  marketSize: MarketSize;
-  personas: Persona[];
-  /** 가정·한계 등 사용자에게 보여줄 안내 문구 */
-  notices: string[];
-}
+export type DiagnosisResult = z.infer<typeof diagnosisResultSchema>;
 
 /** 시장진단 요청 입력. */
-export interface DiagnosisRequest {
-  keyword: string;
-}
+export type DiagnosisRequest = z.infer<typeof diagnosisRequestSchema>;
