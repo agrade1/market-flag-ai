@@ -23,6 +23,17 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-muted: var(--brand-muted);
+  --color-verdict-blue: var(--verdict-blue);
+  --color-verdict-cyan: var(--verdict-cyan);
+  --color-verdict-neutral: var(--verdict-neutral);
+  --color-verdict-orange: var(--verdict-orange);
+  --color-verdict-red: var(--verdict-red);
+  --color-source-public: var(--source-public);
+  --color-source-trend: var(--source-trend);
+  --color-source-ai: var(--source-ai);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -66,12 +77,31 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --ring: oklch(0.546 0.215 262.9);
+
+  /* 브랜드 강조 (blue-600) — ui-design-direction §2.1 */
+  --brand: oklch(0.546 0.215 262.9);
+  --brand-foreground: oklch(0.985 0 0);
+  --brand-muted: oklch(0.95 0.03 255);
+
+  /* 시장 판정 5단계 스케일 (블루오션 ↔ 레드오션) — §2.2 */
+  --verdict-blue: oklch(0.55 0.2 255);
+  --verdict-cyan: oklch(0.7 0.13 220);
+  --verdict-neutral: oklch(0.68 0.02 255);
+  --verdict-orange: oklch(0.72 0.16 55);
+  --verdict-red: oklch(0.58 0.22 27);
+
+  /* 데이터 출처 색코딩 (공공=blue / 트렌드=teal / AI추론=amber) — §2.3 */
+  --source-public: oklch(0.55 0.2 255);
+  --source-trend: oklch(0.7 0.12 195);
+  --source-ai: oklch(0.75 0.15 75);
+
+  /* 차트 팔레트 (회색 → 컬러) — §2.4 */
+  --chart-1: oklch(0.546 0.215 262.9);
+  --chart-2: oklch(0.7 0.12 195);
+  --chart-3: oklch(0.75 0.15 75);
+  --chart-4: oklch(0.58 0.17 300);
+  --chart-5: oklch(0.65 0.02 255);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -101,12 +131,31 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --ring: oklch(0.62 0.19 262.9);
+
+  /* 브랜드 강조 (다크에서 한 톤 밝게) — §2.1 */
+  --brand: oklch(0.62 0.19 262.9);
+  --brand-foreground: oklch(0.985 0 0);
+  --brand-muted: oklch(0.28 0.06 262.9);
+
+  /* 시장 판정 5단계 (다크: 명도 상향으로 대비 확보) — §2.2 */
+  --verdict-blue: oklch(0.62 0.19 255);
+  --verdict-cyan: oklch(0.75 0.12 220);
+  --verdict-neutral: oklch(0.72 0.02 255);
+  --verdict-orange: oklch(0.77 0.15 55);
+  --verdict-red: oklch(0.64 0.21 27);
+
+  /* 데이터 출처 색코딩 (다크) — §2.3 */
+  --source-public: oklch(0.62 0.19 255);
+  --source-trend: oklch(0.75 0.11 195);
+  --source-ai: oklch(0.8 0.14 75);
+
+  /* 차트 팔레트 (다크: 명도 상향) — §2.4 */
+  --chart-1: oklch(0.62 0.19 262.9);
+  --chart-2: oklch(0.75 0.11 195);
+  --chart-3: oklch(0.8 0.14 75);
+  --chart-4: oklch(0.66 0.16 300);
+  --chart-5: oklch(0.72 0.02 255);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
