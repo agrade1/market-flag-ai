@@ -4,14 +4,24 @@
 // 호출한다. 외부 API/LLM Key는 이 레이어(및 하위 data-sources/llm)에서만 다루고
 // 클라이언트로 노출하지 않는다(키 서버 전용 원칙).
 //
-// 현재 단계(골격): ①입력검증 → ⑦스키마검증만 실제 동작하고, ②~⑥ 파이프라인은
-// 기존 deterministic mock을 경유하는 자리표시다. 후속 이슈에서 keyword-analysis →
-// source-routing → fetch(public/trend) → transform → infer 로 단계별 교체한다.
+// 파이프라인: ①검증 → ②키워드분석 → (③소스라우팅: 후속) → ④수집(public/trend) →
+// ⑤가공 → ⑥추론(market-size/competition/persona) → ⑦새너티게이트+스키마검증.
+// 외부 수집 실패는 에러가 아니라 fallback으로 처리하고 confidence만 낮춘다.
 
-import { getMockDiagnosis } from "@/lib/data-sources/mock-market-data";
 import { diagnosisResultSchema } from "@/lib/ai/report-schema";
-import { KEYWORD_MAX_LENGTH } from "@/constants/market";
-import type { DiagnosisResult } from "@/features/market-diagnosis/types";
+import { KEYWORD_MAX_LENGTH, KEYWORD_MIN_LENGTH } from "@/constants/market";
+import { analyzeKeyword } from "@/lib/inference/keyword-analysis";
+import { fetchMacroData } from "@/lib/data-sources/public-data";
+import { fetchTrendData } from "@/lib/data-sources/trend-data";
+import { transform } from "@/lib/inference/transform";
+import { assessCompetition } from "@/lib/inference/competition";
+import { estimateMarketSize } from "@/lib/inference/market-size";
+import { buildPersonas } from "@/lib/inference/persona";
+import { runSanity } from "@/lib/inference/sanity";
+import type {
+  DiagnosisResult,
+  OceanType,
+} from "@/features/market-diagnosis/types";
 
 /** 입력 키워드 자체가 유효하지 않을 때(빈 값/과길이). 호출부에서 400으로 변환한다. */
 export class InvalidKeywordError extends Error {
@@ -19,6 +29,29 @@ export class InvalidKeywordError extends Error {
     super(message);
     this.name = "InvalidKeywordError";
   }
+}
+
+const COMMON_NOTICES = [
+  "본 리포트의 시장 규모·경쟁 강도·타겟 정보는 공공데이터·검색 트렌드·AI 추론에 기반한 참고용 추정치입니다.",
+  "실제 창업·투자 의사결정 전에는 1차 자료 조사 등 추가 검증이 필요합니다.",
+];
+
+const LOW_CONFIDENCE_NOTICE =
+  "데이터가 부족해 인접 시장·거시 지표 기반 AI 추정 비중이 높은 리포트입니다. 수치 해석에 주의하세요.";
+
+/** Promise.allSettled 결과에서 값 또는 null을 꺼낸다(수집 실패 = null). */
+function settled<T>(result: PromiseSettledResult<T | null>): T | null {
+  return result.status === "fulfilled" ? result.value : null;
+}
+
+function buildSummary(keyword: string, ocean: OceanType): string {
+  const phrase =
+    ocean === "red"
+      ? "경쟁이 치열한 레드오션 성향"
+      : ocean === "blue"
+        ? "경쟁이 적은 블루오션 성향"
+        : "기회와 경쟁이 공존하는 혼합 시장";
+  return `"${keyword}" 시장은 ${phrase}으로 추정됩니다. 아래 시장 규모와 타겟 페르소나를 참고해 진입 전략을 점검해 보세요.`;
 }
 
 /**
@@ -39,15 +72,68 @@ export async function diagnose(keyword: string): Promise<DiagnosisResult> {
     );
   }
 
-  // ②~⑥ 파이프라인 (현재는 mock 경유 자리표시 — 후속 이슈에서 단계별 교체)
-  //   ② analyzeKeyword(trimmed)
-  //   ③ routeSources(analysis)
-  //   ④ fetch: public-data / trend-data (실패 시 null → fallback)
-  //   ⑤ transform(raw) → 정규화 + method 태깅
-  //   ⑥ infer: marketSize / competition / persona (+범위·confidence)
-  const generatedAt = new Date().toISOString();
-  const result = getMockDiagnosis(trimmed, generatedAt);
+  // ② 키워드 분석
+  const analysis = analyzeKeyword(trimmed);
 
-  // ⑦ 새너티 게이트 + 스키마 검증 — 계약(zod)에 맞는 형태만 반환
+  // 너무 짧은 키워드는 카테고리 라우팅이 불가 → 거시 소스 결측으로 간주(저신뢰 경로).
+  const isSparse = trimmed.length < KEYWORD_MIN_LENGTH;
+
+  // ④ 데이터 수집 — 병렬, 각 소스 실패해도 죽지 않음
+  const [macroSettled, trendSettled] = await Promise.allSettled([
+    isSparse ? Promise.resolve(null) : fetchMacroData(analysis),
+    fetchTrendData(analysis),
+  ]);
+  const macro = settled(macroSettled);
+  const trend = settled(trendSettled);
+
+  // ⑤ 가공
+  const inputs = transform(analysis, macro, trend);
+
+  // ⑥ 추론 — 경쟁 점수가 SOM 점유율 가정에 쓰이므로 competition 먼저
+  const competition = assessCompetition(inputs, analysis);
+  const marketSize = estimateMarketSize(inputs, competition.score);
+  const personas = buildPersonas(inputs, analysis);
+
+  // ⑦ 새너티 게이트 + confidence
+  const sanity = runSanity(inputs, marketSize);
+
+  const notices =
+    sanity.confidence === "high"
+      ? [...COMMON_NOTICES]
+      : [LOW_CONFIDENCE_NOTICE, ...COMMON_NOTICES];
+
+  const result: DiagnosisResult = {
+    keyword: trimmed,
+    generatedAt: new Date().toISOString(),
+    confidence: sanity.confidence,
+    isEstimated: sanity.isEstimated,
+    summary: buildSummary(trimmed, competition.ocean),
+    competition: {
+      ocean: competition.ocean,
+      score: competition.score,
+      summary: competition.summary,
+      signals: competition.signals,
+    },
+    marketSize: {
+      tam: marketSize.tam,
+      sam: marketSize.sam,
+      som: marketSize.som,
+      unit: marketSize.unit,
+      tamRange: marketSize.tamRange,
+      samRange: marketSize.samRange,
+      somRange: marketSize.somRange,
+      methods: marketSize.methods,
+      baseYear: marketSize.baseYear,
+      currency: marketSize.currency,
+      assumptions: marketSize.assumptions,
+      sources: marketSize.sources,
+    },
+    personas,
+    notices,
+    dataSources: inputs.sources,
+    confidenceReasons: sanity.confidenceReasons,
+  };
+
+  // 계약(zod)에 맞는 형태만 반환
   return diagnosisResultSchema.parse(result);
 }
