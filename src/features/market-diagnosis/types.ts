@@ -8,17 +8,27 @@
 
 import type { z } from "zod";
 import type {
+  attentionChannelSchema,
+  attentionDemographicsSchema,
+  attentionInfoSchema,
+  buzzIndexSchema,
+  channelMixEntrySchema,
+  channelTrendSchema,
   competitionInfoSchema,
   competitionSignalSchema,
   confidenceLevelSchema,
   diagnosisRequestSchema,
   diagnosisResultSchema,
+  distributionBinSchema,
   estimateMethodSchema,
   estimateRangeSchema,
+  issueKeywordSchema,
   marketSizeSchema,
   oceanTypeSchema,
   personaSchema,
+  sentimentSchema,
   sourceRefSchema,
+  trendPointSchema,
 } from "@/lib/ai/report-schema";
 
 export type OceanType = z.infer<typeof oceanTypeSchema>;
@@ -45,6 +55,38 @@ export type CompetitionInfo = z.infer<typeof competitionInfoSchema>;
 
 /** 타겟 고객 페르소나. */
 export type Persona = z.infer<typeof personaSchema>;
+
+// === 관심도·이슈 트래킹 (attention) — SNS/트렌드 대시보드 모듈 ===
+
+/** 관심도 집계 채널. */
+export type AttentionChannel = z.infer<typeof attentionChannelSchema>;
+
+/** 감성 태그(pos/neu/neg, inferred). */
+export type SentimentTag = z.infer<typeof sentimentSchema>;
+
+/** 분포 한 칸({label, pct}). */
+export type DistributionBin = z.infer<typeof distributionBinSchema>;
+
+/** 관심 집중지수(0–100 Buzz Index). */
+export type BuzzIndex = z.infer<typeof buzzIndexSchema>;
+
+/** 채널별 점유 비중. */
+export type ChannelMixEntry = z.infer<typeof channelMixEntrySchema>;
+
+/** 추이 한 점(상대값). */
+export type TrendPoint = z.infer<typeof trendPointSchema>;
+
+/** 채널별 언급량 상대 추이. */
+export type ChannelTrend = z.infer<typeof channelTrendSchema>;
+
+/** 관심 주체 연령·성별 분해(대화주체). */
+export type AttentionDemographics = z.infer<typeof attentionDemographicsSchema>;
+
+/** 이슈·연관어 + 감성. */
+export type IssueKeyword = z.infer<typeof issueKeywordSchema>;
+
+/** 관심도·이슈 트래킹 묶음. */
+export type AttentionInfo = z.infer<typeof attentionInfoSchema>;
 
 /** 시장진단 결과 전체. 대시보드가 이 형태를 렌더한다. */
 export type DiagnosisResult = z.infer<typeof diagnosisResultSchema>;
