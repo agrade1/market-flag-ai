@@ -120,6 +120,96 @@ export const personaSchema = z.object({
   share: z.number(),
 });
 
+// === 관심도·이슈 트래킹 (attention) — 대시보드 SNS/트렌드 모듈 계약 ===
+// (market-research-plan §6 / ui-design-direction §4a). 전부 additive-optional.
+// ⚠️ 관심도는 "관심·모멘텀 프록시"이지 시장 규모(원)가 아니다. 추이 값은 비율·기울기만.
+
+/** 관심도 집계 채널. */
+export const attentionChannelSchema = z.enum([
+  "youtube",
+  "blog",
+  "cafe",
+  "news",
+  "instagram",
+  "x",
+]);
+
+/** 감성 태그 (inferred). */
+export const sentimentSchema = z.enum(["pos", "neu", "neg"]);
+
+/** 분포 한 칸 (예: {label:"30대", pct:41}). 합 ≈ 100. */
+export const distributionBinSchema = z.object({
+  label: z.string(),
+  /** 비중 (0–100, %) */
+  pct: z.number(),
+});
+
+/** 관심 집중지수 (0–100 Buzz Index). */
+export const buzzIndexSchema = z.object({
+  /** 0–100, 높을수록 관심 집중 */
+  score: z.number(),
+  method: estimateMethodSchema,
+  /** 추정 범위(보수/기본/낙관) */
+  range: estimateRangeSchema.optional(),
+  /** 한 줄 해설 (예: "최근 3개월 관심 급상승") */
+  note: z.string().optional(),
+});
+
+/** 채널별 점유 비중. */
+export const channelMixEntrySchema = z.object({
+  channel: attentionChannelSchema,
+  /** 점유 비중 (0–100, %) */
+  sharePct: z.number(),
+  source: sourceRefSchema.optional(),
+});
+
+/** 추이 한 점 (상대값). value는 절대 규모가 아니라 비율/지수다. */
+export const trendPointSchema = z.object({
+  /** 기간 라벨 (예: "2024-10") */
+  period: z.string(),
+  /** 상대 관심도 값 (비율·지수, 절대 규모 아님) */
+  value: z.number(),
+});
+
+/** 채널별 언급량 상대 추이. */
+export const channelTrendSchema = z.object({
+  channel: attentionChannelSchema,
+  points: z.array(trendPointSchema),
+});
+
+/** 관심 주체 인구 분해 (대화주체 — 구매자 페르소나와 별개). */
+export const attentionDemographicsSchema = z.object({
+  ageDistribution: z.array(distributionBinSchema),
+  genderDistribution: z.array(distributionBinSchema),
+});
+
+/** 이슈·연관어 + 감성. */
+export const issueKeywordSchema = z.object({
+  keyword: z.string(),
+  /** 연관 강도 (상대 weight) */
+  weight: z.number(),
+  /** 긍/중립/부정 (inferred) */
+  sentiment: sentimentSchema.optional(),
+});
+
+/** 관심도·이슈 트래킹 묶음. */
+export const attentionInfoSchema = z.object({
+  buzzIndex: buzzIndexSchema,
+  channelMix: z.array(channelMixEntrySchema),
+  /** 채널별 상대 추이 (비율·기울기만) */
+  trend: z.array(channelTrendSchema),
+  /** 대화주체 연령·성별 분해 */
+  demographics: attentionDemographicsSchema.optional(),
+  /** 상위 연관 키워드/이슈 + 감성 */
+  issues: z.array(issueKeywordSchema),
+  /** 채널별 사용 출처 */
+  sources: z.array(sourceRefSchema).optional(),
+  /** 관심도 모듈 신뢰도 (SNS는 대개 trend-adjusted/inferred) */
+  confidence: confidenceLevelSchema.optional(),
+  /** 데이터 부족 등 안내 */
+  note: z.string().optional(),
+});
+
 /** 시장진단 결과 전체. 대시보드가 이 형태를 렌더한다. */
 export const diagnosisResultSchema = z.object({
   keyword: z.string(),
@@ -141,6 +231,8 @@ export const diagnosisResultSchema = z.object({
   dataSources: z.array(sourceRefSchema).optional(),
   /** confidence 산정 근거 */
   confidenceReasons: z.array(z.string()).optional(),
+  /** 관심도·이슈 트래킹(SNS/트렌드) 모듈 — 대시보드 §4a. 엔진 미구현 시 생략 */
+  attention: attentionInfoSchema.optional(),
 });
 
 /** 시장진단 요청 입력. */
