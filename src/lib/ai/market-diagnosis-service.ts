@@ -18,9 +18,11 @@ import { assessCompetition } from "@/lib/inference/competition";
 import { estimateMarketSize } from "@/lib/inference/market-size";
 import { buildPersonas } from "@/lib/inference/persona";
 import { runSanity } from "@/lib/inference/sanity";
+import { enrichNarrative } from "@/lib/ai/market-diagnosis-prompt";
 import type {
   DiagnosisResult,
   OceanType,
+  Persona,
 } from "@/features/market-diagnosis/types";
 
 /** 입력 키워드 자체가 유효하지 않을 때(빈 값/과길이). 호출부에서 400으로 변환한다. */
@@ -52,6 +54,37 @@ function buildSummary(keyword: string, ocean: OceanType): string {
         ? "경쟁이 적은 블루오션 성향"
         : "기회와 경쟁이 공존하는 혼합 시장";
   return `"${keyword}" 시장은 ${phrase}으로 추정됩니다. 아래 시장 규모와 타겟 페르소나를 참고해 진입 전략을 점검해 보세요.`;
+}
+
+/**
+ * LLM 서술 보완 결과를 결과에 병합한다. 숫자(점수·규모·비중)는 건드리지 않고
+ * summary와 페르소나의 painPoint/동기(traits에 추가)만 교체한다.
+ */
+function applyEnrichment(
+  result: DiagnosisResult,
+  enrichment: Awaited<ReturnType<typeof enrichNarrative>>,
+): DiagnosisResult {
+  if (!enrichment) return result;
+
+  const summary = enrichment.summary?.trim() || result.summary;
+
+  const byId = new Map(
+    (enrichment.personas ?? []).map((p) => [p.id, p]),
+  );
+  const personas: Persona[] = result.personas.map((persona) => {
+    const e = byId.get(persona.id);
+    if (!e) return persona;
+    const motivation = e.motivation?.trim();
+    return {
+      ...persona,
+      painPoint: e.painPoint?.trim() || persona.painPoint,
+      traits: motivation
+        ? [...persona.traits, `동기: ${motivation}`]
+        : persona.traits,
+    };
+  });
+
+  return { ...result, summary, personas };
 }
 
 /**
@@ -134,6 +167,23 @@ export async function diagnose(keyword: string): Promise<DiagnosisResult> {
     confidenceReasons: sanity.confidenceReasons,
   };
 
-  // 계약(zod)에 맞는 형태만 반환
-  return diagnosisResultSchema.parse(result);
+  // ⑥' LLM 서술 보완 — 키가 없거나 실패하면 null → 휴리스틱 서술 유지(숫자 불변)
+  const enrichment = await enrichNarrative({
+    keyword: trimmed,
+    category: analysis.category,
+    priceTier: analysis.priceTier,
+    ocean: competition.ocean,
+    score: competition.score,
+    personas: personas.map((p) => ({
+      id: p.id,
+      name: p.name,
+      ageRange: p.ageRange,
+      gender: p.gender,
+      traits: p.traits,
+    })),
+  });
+  const enriched = applyEnrichment(result, enrichment);
+
+  // ⑦ 계약(zod)에 맞는 형태만 반환
+  return diagnosisResultSchema.parse(enriched);
 }
